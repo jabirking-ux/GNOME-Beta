@@ -246,6 +246,11 @@ epiphany_sources = [
   readability_resources
 ]
 
+if host_machine.system() == 'windows'
+  windows = import('windows')
+  epiphany_sources += windows.compile_resources('epiphany.rc')
+endif
+
 epiphany = executable('epiphany',
   epiphany_sources,
   dependencies: ephymain_dep,
