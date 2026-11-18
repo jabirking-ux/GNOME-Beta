@@ -3810,9 +3810,28 @@ set_as_default_browser_dialog_data_free (SetAsDefaultBrowserDialogData *data)
   g_free (data);
 }
 
+#ifdef G_OS_WIN32
+static void
+on_default_browser_dialog_closed_win32 (AdwDialog *dialog,
+                                        gpointer   user_data)
+{
+  GtkWidget *view = GTK_WIDGET (user_data);
+  if (GTK_IS_WIDGET (view))
+    gtk_widget_set_visible (view, TRUE);
+}
+#endif
+
 static void
 show_default_browser_dialog (SetAsDefaultBrowserDialogData *data)
 {
+#ifdef G_OS_WIN32
+  EphyWebView *view = ephy_shell_get_active_web_view (ephy_shell_get_default ());
+  if (view) {
+    gtk_widget_set_visible (GTK_WIDGET (view), FALSE);
+    g_signal_connect (data->dialog, "closed",
+                      G_CALLBACK (on_default_browser_dialog_closed_win32), view);
+  }
+#endif
   adw_dialog_present (data->dialog, data->window);
   set_as_default_browser_dialog_data_free (data);
 }
@@ -3822,11 +3841,6 @@ add_default_browser_question (EphyWindow *window)
 {
   AdwDialog *dialog;
   SetAsDefaultBrowserDialogData *data;
-#ifdef G_OS_WIN32
-  /* On Windows, a modal AdwAlertDialog is covered by the native Win32 WebKit
-   * child HWND while grabbing GTK4 pointer events, locking all mouse input. */
-  return;
-#endif
 
   dialog = adw_alert_dialog_new (NULL, NULL);
 
