@@ -270,3 +270,29 @@ pub extern "C" fn ephy_rust_install_firefox_xpi(xpi_path: *const c_char, dest_di
         0
     }
 }
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_download_and_install_xpi(xpi_url: *const c_char, extensions_dir: *const c_char) -> i32 {
+    if xpi_url.is_null() || extensions_dir.is_null() {
+        return 0;
+    }
+    let url = unsafe { CStr::from_ptr(xpi_url) }.to_string_lossy();
+    let ext_dir = unsafe { CStr::from_ptr(extensions_dir) }.to_string_lossy();
+    let slug = url.rsplit('/').next().unwrap_or("firefox-addon").trim_end_matches(".xpi");
+    let dest = std::path::Path::new(ext_dir.as_ref()).join(slug);
+    let tmp_xpi = std::env::temp_dir().join(format!("{}.xpi", slug));
+    let dl = std::process::Command::new("curl.exe")
+        .args(["-sL", "-o", tmp_xpi.to_string_lossy().as_ref(), url.as_ref()])
+        .status();
+    if !matches!(dl, Ok(s) if s.success()) {
+        return 0;
+    }
+    let _ = std::fs::create_dir_all(&dest);
+    let ok = std::process::Command::new("tar.exe")
+        .args(["-xf", tmp_xpi.to_string_lossy().as_ref(), "-C", dest.to_string_lossy().as_ref()])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    let _ = std::fs::remove_file(&tmp_xpi);
+    if ok && dest.join("manifest.json").is_file() { 1 } else { 0 }
+}
