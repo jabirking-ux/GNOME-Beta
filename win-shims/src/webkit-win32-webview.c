@@ -497,6 +497,14 @@ void webkit_web_view_load_uri (WebKitWebView *self, const char *uri) {
 
   if (!priv->wk_page) return;
 
+  if (strstr (uri, "addons.mozilla.org")) {
+    WKStringRef ua = WKStringCreateWithUTF8CString ("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0");
+    WKPageSetCustomUserAgent (priv->wk_page, ua);
+    WKRelease (ua);
+  } else {
+    WKPageSetCustomUserAgent (priv->wk_page, NULL);
+  }
+
   WinUriSchemeEntry *entry = win_webkit_web_context_lookup_scheme (priv->context, uri);
   if (entry && entry->callback) {
     g_autoptr (WebKitURISchemeRequest) req = win_webkit_uri_scheme_request_new_internal (self, uri);
