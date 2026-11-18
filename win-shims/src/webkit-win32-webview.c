@@ -180,6 +180,19 @@ static void on_did_commit_navigation (WKPageRef page, WKNavigationRef nav, WKTyp
   WebKitWebView *self = WEBKIT_WEB_VIEW ((gpointer)client_info);
   update_uri_from_page (self);
   update_title_from_page (self);
+  {
+    WebKitWebViewPrivate *priv = webkit_web_view_get_instance_private (self);
+    if (priv->uri && (g_str_has_suffix (priv->uri, ".xpi") || strstr (priv->uri, "addons.mozilla.org/firefox/downloads/file/"))) {
+      typedef int (*InstallXpiFn) (const char *, const char *);
+      HMODULE mod = GetModuleHandleA ("ephy_rust_perf.dll");
+      if (!mod) mod = LoadLibraryA ("ephy_rust_perf.dll");
+      InstallXpiFn fn = mod ? (InstallXpiFn) GetProcAddress (mod, "ephy_rust_download_and_install_xpi") : NULL;
+      if (fn) {
+        g_autofree char *ext_dir = g_build_filename (g_get_user_data_dir (), "epiphany", "web_extensions", NULL);
+        fn (priv->uri, ext_dir);
+      }
+    }
+  }
   g_signal_emit (self, signals[SIG_LOAD_CHANGED], 0, WEBKIT_LOAD_COMMITTED);
 }
 
