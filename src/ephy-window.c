@@ -3822,6 +3822,11 @@ add_default_browser_question (EphyWindow *window)
 {
   AdwDialog *dialog;
   SetAsDefaultBrowserDialogData *data;
+#ifdef G_OS_WIN32
+  /* On Windows, a modal AdwAlertDialog is covered by the native Win32 WebKit
+   * child HWND while grabbing GTK4 pointer events, locking all mouse input. */
+  return;
+#endif
 
   dialog = adw_alert_dialog_new (NULL, NULL);
 
