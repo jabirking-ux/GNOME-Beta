@@ -46,3 +46,44 @@ pub extern "C" fn ephy_rust_free_str(ptr: *mut c_char) {
         }
     }
 }
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_prewarm_env(exe_dir: *const c_char) {
+    if exe_dir.is_null() {
+        return;
+    }
+    let base = match unsafe { CStr::from_ptr(exe_dir) }.to_str() {
+        Ok(s) => std::path::Path::new(s),
+        Err(_) => return,
+    };
+    let schema_dir = base.join("share").join("glib-2.0").join("schemas");
+    let share_dir = base.join("share");
+    let gio_mods = base.join("lib").join("gio").join("modules");
+    let ca_file = base.join("cacert.pem");
+    let pixbuf_cache = base.join("lib").join("gdk-pixbuf-2.0").join("2.10.0").join("loaders.cache");
+    let pixbuf_dir = base.join("lib").join("gdk-pixbuf-2.0").join("2.10.0").join("loaders");
+
+    if schema_dir.is_dir() {
+        if std::env::var_os("GSETTINGS_SCHEMA_DIR").is_none() {
+            std::env::set_var("GSETTINGS_SCHEMA_DIR", &schema_dir);
+        }
+        if std::env::var_os("XDG_DATA_DIRS").is_none() {
+            std::env::set_var("XDG_DATA_DIRS", &share_dir);
+        }
+    }
+    if gio_mods.is_dir() && std::env::var_os("GIO_MODULE_DIR").is_none() {
+        std::env::set_var("GIO_MODULE_DIR", &gio_mods);
+    }
+    if ca_file.is_file() && std::env::var_os("SSL_CERT_FILE").is_none() {
+        std::env::set_var("SSL_CERT_FILE", &ca_file);
+    }
+    if pixbuf_cache.is_file() && std::env::var_os("GDK_PIXBUF_MODULE_FILE").is_none() {
+        std::env::set_var("GDK_PIXBUF_MODULE_FILE", &pixbuf_cache);
+    }
+    if pixbuf_dir.is_dir() && std::env::var_os("GDK_PIXBUF_MODULEDIR").is_none() {
+        std::env::set_var("GDK_PIXBUF_MODULEDIR", &pixbuf_dir);
+    }
+    if std::env::var_os("GSK_RENDERER").is_none() {
+        std::env::set_var("GSK_RENDERER", "cairo");
+    }
+}

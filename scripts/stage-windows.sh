@@ -73,6 +73,7 @@ cp -r /ucrt64/share/icons/hicolor "$DIST/share/icons/" 2>/dev/null || true
 mkdir -p "$DIST/share/icons/hicolor/scalable/apps" "$DIST/share/icons/hicolor/symbolic/apps"
 cp "$ROOT/data/icons/hicolor/scalable/apps/org.gnome.Epiphany.svg" "$DIST/share/icons/hicolor/scalable/apps/" 2>/dev/null || true
 cp "$ROOT/data/icons/hicolor/symbolic/apps/org.gnome.Epiphany-symbolic.svg" "$DIST/share/icons/hicolor/symbolic/apps/" 2>/dev/null || true
+[ -f "$ROOT/rust-perf/target/release/ephy_rust_perf.dll" ] && cp "$ROOT/rust-perf/target/release/ephy_rust_perf.dll" "$DIST/" || true
 gtk4-update-icon-cache -f -t "$DIST/share/icons/Adwaita" 2>/dev/null || true
 gtk4-update-icon-cache -f -t "$DIST/share/icons/hicolor" 2>/dev/null || true
 cp "$BUILD/data/default-bookmarks.rdf" "$DIST/share/epiphany/" 2>/dev/null || true

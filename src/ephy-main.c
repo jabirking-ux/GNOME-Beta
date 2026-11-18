@@ -203,8 +203,14 @@ main (int   argc,
   {
     g_autofree char *exe_dir = g_win32_get_package_installation_directory_of_module (NULL);
     if (exe_dir) {
-      g_autofree char *share_dir = g_build_filename (exe_dir, "share", NULL);
-      g_autofree char *schema_dir = g_build_filename (share_dir, "glib-2.0", "schemas", NULL);
+      typedef void (*PrewarmFn) (const char *);
+      GModule *rust_mod = g_module_open ("ephy_rust_perf.dll", G_MODULE_BIND_LAZY);
+      PrewarmFn prewarm = NULL;
+      if (rust_mod && g_module_symbol (rust_mod, "ephy_rust_prewarm_env", (gpointer *)&prewarm) && prewarm) {
+        prewarm (exe_dir);
+      } else {
+        g_autofree char *share_dir = g_build_filename (exe_dir, "share", NULL);
+        g_autofree char *schema_dir = g_build_filename (share_dir, "glib-2.0", "schemas", NULL);
       g_autofree char *gio_mods = g_build_filename (exe_dir, "lib", "gio", "modules", NULL);
       g_autofree char *ca_file = g_build_filename (exe_dir, "cacert.pem", NULL);
       g_autofree char *pixbuf_cache = g_build_filename (exe_dir, "lib", "gdk-pixbuf-2.0", "2.10.0", "loaders.cache", NULL);
@@ -219,9 +225,10 @@ main (int   argc,
         g_setenv ("SSL_CERT_FILE", ca_file, FALSE);
       if (g_file_test (pixbuf_cache, G_FILE_TEST_EXISTS))
         g_setenv ("GDK_PIXBUF_MODULE_FILE", pixbuf_cache, FALSE);
-      if (g_file_test (pixbuf_dir, G_FILE_TEST_IS_DIR))
-        g_setenv ("GDK_PIXBUF_MODULEDIR", pixbuf_dir, FALSE);
-      g_setenv ("GSK_RENDERER", "cairo", FALSE);
+        if (g_file_test (pixbuf_dir, G_FILE_TEST_IS_DIR))
+          g_setenv ("GDK_PIXBUF_MODULEDIR", pixbuf_dir, FALSE);
+        g_setenv ("GSK_RENDERER", "cairo", FALSE);
+      }
     }
   }
 #endif
