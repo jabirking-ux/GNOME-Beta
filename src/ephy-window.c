@@ -5437,6 +5437,9 @@ ephy_window_toggle_bookmarks (EphyWindow *self)
 {
   gboolean state;
 
+#ifdef G_OS_WIN32
+  adw_overlay_split_view_set_collapsed (ADW_OVERLAY_SPLIT_VIEW (self->overlay_split_view), FALSE);
+#endif
   state = !adw_overlay_split_view_get_show_sidebar (ADW_OVERLAY_SPLIT_VIEW (self->overlay_split_view));
   adw_overlay_split_view_set_show_sidebar (ADW_OVERLAY_SPLIT_VIEW (self->overlay_split_view), state);
 

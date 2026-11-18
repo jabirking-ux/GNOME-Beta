@@ -36,6 +36,32 @@
 #include <libportal-gtk4/portal-gtk4.h>
 #include <webkit/webkit.h>
 
+#ifdef G_OS_WIN32
+#include "ephy-shell.h"
+static void
+on_win32_dialog_closed (AdwDialog *dialog,
+                        gpointer   user_data)
+{
+  GtkWidget *view = GTK_WIDGET (user_data);
+  if (GTK_IS_WIDGET (view))
+    gtk_widget_set_visible (view, TRUE);
+}
+
+static void
+ephy_win32_present_dialog (AdwDialog *dialog,
+                           GtkWidget *parent)
+{
+  EphyWebView *view = ephy_shell_get_active_web_view (ephy_shell_get_default ());
+  if (view) {
+    gtk_widget_set_visible (GTK_WIDGET (view), FALSE);
+    g_signal_connect (dialog, "closed",
+                      G_CALLBACK (on_win32_dialog_closed), view);
+  }
+  adw_dialog_present (dialog, parent);
+}
+#define adw_dialog_present ephy_win32_present_dialog
+#endif
+
 #include "clear-data-view.h"
 #include "ephy-bookmark-properties.h"
 #include "ephy-bookmarks-export.h"
