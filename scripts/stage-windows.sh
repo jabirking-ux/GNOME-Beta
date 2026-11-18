@@ -32,7 +32,7 @@ fi
 
 # 3. Collect all UCRT64 DLL dependencies via ldd
 echo "Collecting UCRT64 runtime DLLs..."
-for bin in "$DIST/epiphany.exe" "$DIST/libephymain.dll" "$DIST/libephymisc.dll" "$DIST/libephyautofill.dll" "$DIST/libephysync.dll"; do
+for bin in "$DIST/epiphany.exe" "$DIST/gnome-web-installer.exe" "$DIST/libephymain.dll" "$DIST/libephymisc.dll" "$DIST/libephyautofill.dll" "$DIST/libephysync.dll"; do
   ldd "$bin" | awk '/\/ucrt64\/bin\// {print $3}' | sort -u | while read -r dll; do
     [ -f "$dll" ] && cp -n "$dll" "$DIST/"
   done
