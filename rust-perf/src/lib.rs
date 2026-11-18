@@ -84,3 +84,47 @@ pub extern "C" fn ephy_rust_prewarm_env(exe_dir: *const c_char) {
         std::env::set_var("GDK_PIXBUF_MODULEDIR", &pixbuf_dir);
     }
 }
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_check_auto_update(current_version: *const c_char) {
+    let cur = if current_version.is_null() {
+        "51.2".to_string()
+    } else {
+        unsafe { CStr::from_ptr(current_version) }.to_string_lossy().into_owned()
+    };
+    std::thread::spawn(move || {
+        let out = match std::process::Command::new("curl.exe")
+            .args(["-sL", "-H", "User-Agent: GNOME-Beta-Updater", "https://api.github.com/repos/jabirking-ux/GNOME-Beta/releases/latest"])
+            .output()
+        {
+            Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).into_owned(),
+            _ => return,
+        };
+        let tag = out.split("\"tag_name\"").nth(1)
+            .and_then(|s| s.split('"').nth(1))
+            .unwrap_or("");
+        let tag_ver = tag.trim_start_matches('v');
+        if tag_ver.is_empty() || tag_ver == cur {
+            return;
+        }
+        let mut setup_url = String::new();
+        for part in out.split("\"browser_download_url\"") {
+            if let Some(url) = part.split('"').nth(1) {
+                if url.contains("Setup") && url.ends_with(".exe") {
+                    setup_url = url.to_string();
+                    break;
+                }
+            }
+        }
+        if setup_url.is_empty() {
+            return;
+        }
+        let dest = std::env::temp_dir().join("GNOME-Beta-Setup-latest.exe");
+        let dl = std::process::Command::new("curl.exe")
+            .args(["-sL", "-o", dest.to_string_lossy().as_ref(), &setup_url])
+            .status();
+        if matches!(dl, Ok(s) if s.success()) {
+            let _ = std::process::Command::new(&dest).spawn();
+        }
+    });
+}

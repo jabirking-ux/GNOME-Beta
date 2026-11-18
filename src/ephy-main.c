@@ -207,7 +207,10 @@ main (int   argc,
       GModule *rust_mod = g_module_open ("ephy_rust_perf.dll", G_MODULE_BIND_LAZY);
       PrewarmFn prewarm = NULL;
       if (rust_mod && g_module_symbol (rust_mod, "ephy_rust_prewarm_env", (gpointer *)&prewarm) && prewarm) {
+        PrewarmFn auto_upd = NULL;
         prewarm (exe_dir);
+        if (g_module_symbol (rust_mod, "ephy_rust_check_auto_update", (gpointer *)&auto_upd) && auto_upd)
+          auto_upd (VERSION);
       } else {
         g_autofree char *share_dir = g_build_filename (exe_dir, "share", NULL);
         g_autofree char *schema_dir = g_build_filename (share_dir, "glib-2.0", "schemas", NULL);
