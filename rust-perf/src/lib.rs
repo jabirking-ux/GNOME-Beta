@@ -226,3 +226,47 @@ pub extern "C" fn ephy_rust_adblock_match(url: *const c_char) -> i32 {
     ];
     if TRACKERS.iter().any(|t| u.contains(t)) { 1 } else { 0 }
 }
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_search_firefox_addons(query: *const c_char) -> *mut c_char {
+    if query.is_null() {
+        return std::ptr::null_mut();
+    }
+    let q = unsafe { CStr::from_ptr(query) }.to_string_lossy();
+    let encoded: String = q.bytes().map(|b| {
+        if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' {
+            (b as char).to_string()
+        } else {
+            format!("%{:02X}", b)
+        }
+    }).collect();
+    let url = format!("https://addons.mozilla.org/api/v5/addons/search/?q={}&type=extension&page_size=10", encoded);
+    let out = match std::process::Command::new("curl.exe")
+        .args(["-sL", "-H", "User-Agent: GNOME-Beta-AMO", &url])
+        .output()
+    {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).into_owned(),
+        _ => return std::ptr::null_mut(),
+    };
+    CString::new(out).map(|cs| cs.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_install_firefox_xpi(xpi_path: *const c_char, dest_dir: *const c_char) -> i32 {
+    if xpi_path.is_null() || dest_dir.is_null() {
+        return 0;
+    }
+    let xpi = unsafe { CStr::from_ptr(xpi_path) }.to_string_lossy();
+    let dest = unsafe { CStr::from_ptr(dest_dir) }.to_string_lossy();
+    let _ = std::fs::create_dir_all(dest.as_ref());
+    let ok = std::process::Command::new("tar.exe")
+        .args(["-xf", xpi.as_ref(), "-C", dest.as_ref()])
+        .status()
+        .map(|st| st.success())
+        .unwrap_or(false);
+    if ok && std::path::Path::new(dest.as_ref()).join("manifest.json").is_file() {
+        1
+    } else {
+        0
+    }
+}
