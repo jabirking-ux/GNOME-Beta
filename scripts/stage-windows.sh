@@ -16,6 +16,11 @@ cp "$BUILD/lib/libephymisc.dll" "$DIST/"
 cp "$BUILD/lib/autofill/libephyautofill.dll" "$DIST/"
 cp "$BUILD/lib/sync/libephysync.dll" "$DIST/"
 
+# 1b. Build native Libadwaita Linux-style installer into staging
+gcc -O2 -Wall -Wextra "$ROOT/installer/gnome-web-installer.c" -o "$DIST/gnome-web-installer.exe" \
+  -DAPP_VERSION="\"${VERSION:-51.2.0}\"" \
+  $(pkg-config --cflags --libs libadwaita-1 gtk4 gio-2.0) -lole32 -lshell32 -luuid -mwindows
+
 # 2. Copy WebKit WinCairo runtime if provided
 if [ -n "$WEBKIT_SRC" ] && [ -d "$WEBKIT_SRC" ]; then
   echo "Copying WebKit WinCairo from $WEBKIT_SRC..."
