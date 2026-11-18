@@ -169,3 +169,60 @@ pub extern "C" fn ephy_rust_register_default_browser(exe_path: *const c_char) ->
         .spawn();
     1
 }
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_cred_store(target: *const c_char, user: *const c_char, secret: *const c_char) -> i32 {
+    if target.is_null() || user.is_null() || secret.is_null() {
+        return 0;
+    }
+    let t = unsafe { CStr::from_ptr(target) }.to_string_lossy();
+    let u = unsafe { CStr::from_ptr(user) }.to_string_lossy();
+    let s = unsafe { CStr::from_ptr(secret) }.to_string_lossy();
+    let ok = std::process::Command::new("cmdkey.exe")
+        .args([&format!("/generic:{}", t), &format!("/user:{}", u), &format!("/pass:{}", s)])
+        .status()
+        .map(|st| st.success())
+        .unwrap_or(false);
+    if ok { 1 } else { 0 }
+}
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_cred_delete(target: *const c_char) -> i32 {
+    if target.is_null() {
+        return 0;
+    }
+    let t = unsafe { CStr::from_ptr(target) }.to_string_lossy();
+    let ok = std::process::Command::new("cmdkey.exe")
+        .args([&format!("/delete:{}", t)])
+        .status()
+        .map(|st| st.success())
+        .unwrap_or(false);
+    if ok { 1 } else { 0 }
+}
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_sanitize_filename(name: *const c_char) -> *mut c_char {
+    if name.is_null() {
+        return std::ptr::null_mut();
+    }
+    let s = unsafe { CStr::from_ptr(name) }.to_string_lossy();
+    let clean: String = s.chars().map(|c| match c {
+        '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+        _ if c.is_control() => '_',
+        _ => c,
+    }).collect();
+    CString::new(clean.trim()).map(|cs| cs.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_adblock_match(url: *const c_char) -> i32 {
+    if url.is_null() {
+        return 0;
+    }
+    let u = unsafe { CStr::from_ptr(url) }.to_string_lossy().to_lowercase();
+    const TRACKERS: &[&str] = &[
+        "doubleclick.net", "googlesyndication.com", "google-analytics.com",
+        "googletagmanager.com", "facebook.net/tr", "ads.yahoo.com", "adnxs.com",
+    ];
+    if TRACKERS.iter().any(|t| u.contains(t)) { 1 } else { 0 }
+}
