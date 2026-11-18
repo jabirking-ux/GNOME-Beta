@@ -4771,6 +4771,30 @@ ephy_window_class_init (EphyWindowClass *klass)
   g_object_class_install_properties (object_class, G_N_ELEMENTS (props), props);
 }
 
+#ifdef G_OS_WIN32
+static void
+on_visible_dialog_notify_win32 (GObject    *obj,
+                                GParamSpec *pspec,
+                                gpointer    user_data)
+{
+  EphyWindow *window = EPHY_WINDOW (obj);
+  AdwDialog *dlg = adw_application_window_get_visible_dialog (ADW_APPLICATION_WINDOW (window));
+  EphyWebView *view = window->active_embed ? ephy_embed_get_web_view (window->active_embed) : NULL;
+  if (dlg) {
+    if (view && gtk_widget_get_visible (GTK_WIDGET (view))) {
+      g_object_set_data (G_OBJECT (window), "win32-hidden-view", view);
+      gtk_widget_set_visible (GTK_WIDGET (view), FALSE);
+    }
+  } else {
+    EphyWebView *hidden = g_object_steal_data (G_OBJECT (window), "win32-hidden-view");
+    if (hidden && GTK_IS_WIDGET (hidden))
+      gtk_widget_set_visible (GTK_WIDGET (hidden), TRUE);
+    else if (view && !gtk_widget_get_visible (GTK_WIDGET (view)))
+      gtk_widget_set_visible (GTK_WIDGET (view), TRUE);
+  }
+}
+#endif
+
 static void
 ephy_window_init (EphyWindow *window)
 {
@@ -4778,6 +4802,10 @@ ephy_window_init (EphyWindow *window)
   g_autoptr (GtkWindowGroup) window_group = gtk_window_group_new ();
 
   LOG ("EphyWindow initializing %p", window);
+#ifdef G_OS_WIN32
+  g_signal_connect (window, "notify::visible-dialog",
+                    G_CALLBACK (on_visible_dialog_notify_win32), NULL);
+#endif
 
   gtk_widget_init_template (GTK_WIDGET (window));
 

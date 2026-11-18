@@ -290,6 +290,7 @@ static void ensure_wk_view (WebKitWebView *self) {
   RECT r = {0, 0, 800, 600};
   priv->wk_view = WKViewCreate (r, pcfg, top_hwnd);
   WKRelease (pcfg);
+  if (!priv->wk_view) return;
   priv->wk_page = WKViewGetPage (priv->wk_view);
 
   WKPageNavigationClientV0 nc;
@@ -348,11 +349,15 @@ static void webkit_web_view_finalize (GObject *obj) {
     gtk_widget_remove_tick_callback (GTK_WIDGET (self), priv->tick_id);
     priv->tick_id = 0;
   }
+  if (priv->wk_page) {
+    WKPageSetPageNavigationClient (priv->wk_page, NULL);
+    priv->wk_page = NULL;
+  }
   if (priv->wk_view) {
     HWND hwnd = WKViewGetWindow (priv->wk_view);
     if (hwnd) DestroyWindow (hwnd);
+    WKRelease (priv->wk_view);
     priv->wk_view = NULL;
-    priv->wk_page = NULL;
   }
   g_clear_object (&priv->context);
   g_clear_object (&priv->network_session);
