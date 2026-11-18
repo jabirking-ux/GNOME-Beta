@@ -207,6 +207,8 @@ main (int   argc,
       g_autofree char *schema_dir = g_build_filename (share_dir, "glib-2.0", "schemas", NULL);
       g_autofree char *gio_mods = g_build_filename (exe_dir, "lib", "gio", "modules", NULL);
       g_autofree char *ca_file = g_build_filename (exe_dir, "cacert.pem", NULL);
+      g_autofree char *pixbuf_cache = g_build_filename (exe_dir, "lib", "gdk-pixbuf-2.0", "2.10.0", "loaders.cache", NULL);
+      g_autofree char *pixbuf_dir = g_build_filename (exe_dir, "lib", "gdk-pixbuf-2.0", "2.10.0", "loaders", NULL);
       if (g_file_test (schema_dir, G_FILE_TEST_IS_DIR)) {
         g_setenv ("GSETTINGS_SCHEMA_DIR", schema_dir, FALSE);
         g_setenv ("XDG_DATA_DIRS", share_dir, FALSE);
@@ -215,6 +217,10 @@ main (int   argc,
         g_setenv ("GIO_MODULE_DIR", gio_mods, FALSE);
       if (g_file_test (ca_file, G_FILE_TEST_EXISTS))
         g_setenv ("SSL_CERT_FILE", ca_file, FALSE);
+      if (g_file_test (pixbuf_cache, G_FILE_TEST_EXISTS))
+        g_setenv ("GDK_PIXBUF_MODULE_FILE", pixbuf_cache, FALSE);
+      if (g_file_test (pixbuf_dir, G_FILE_TEST_IS_DIR))
+        g_setenv ("GDK_PIXBUF_MODULEDIR", pixbuf_dir, FALSE);
     }
   }
 #endif

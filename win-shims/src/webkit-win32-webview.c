@@ -126,7 +126,7 @@ static void sync_wk_geometry (WebKitWebView *self) {
 
   if (x != priv->last_x || y != priv->last_y || w != priv->last_w || h != priv->last_h || !IsWindowVisible (hwnd)) {
     priv->last_x = x; priv->last_y = y; priv->last_w = w; priv->last_h = h;
-    SetWindowPos (hwnd, NULL, x, y, w, h, SWP_NOACTIVATE | SWP_NOZORDER | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS);
+    SetWindowPos (hwnd, HWND_TOP, x, y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
   }
 }
 
