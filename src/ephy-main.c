@@ -227,7 +227,6 @@ main (int   argc,
         g_setenv ("GDK_PIXBUF_MODULE_FILE", pixbuf_cache, FALSE);
         if (g_file_test (pixbuf_dir, G_FILE_TEST_IS_DIR))
           g_setenv ("GDK_PIXBUF_MODULEDIR", pixbuf_dir, FALSE);
-        g_setenv ("GSK_RENDERER", "cairo", FALSE);
       }
     }
   }

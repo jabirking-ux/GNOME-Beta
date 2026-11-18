@@ -83,7 +83,4 @@ pub extern "C" fn ephy_rust_prewarm_env(exe_dir: *const c_char) {
     if pixbuf_dir.is_dir() && std::env::var_os("GDK_PIXBUF_MODULEDIR").is_none() {
         std::env::set_var("GDK_PIXBUF_MODULEDIR", &pixbuf_dir);
     }
-    if std::env::var_os("GSK_RENDERER").is_none() {
-        std::env::set_var("GSK_RENDERER", "cairo");
-    }
 }
