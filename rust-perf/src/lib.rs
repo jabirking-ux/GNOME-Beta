@@ -128,3 +128,44 @@ pub extern "C" fn ephy_rust_check_auto_update(current_version: *const c_char) {
         }
     });
 }
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_register_default_browser(exe_path: *const c_char) -> i32 {
+    if exe_path.is_null() {
+        return 0;
+    }
+    let exe = match unsafe { CStr::from_ptr(exe_path) }.to_str() {
+        Ok(s) if !s.is_empty() => s,
+        _ => return 0,
+    };
+    let cmd_val = format!("\"{}\" \"%1\"", exe);
+    let icon_val = format!("{},0", exe);
+    let reg_cmds: &[(&str, &str, &str)] = &[
+        (r"HKCU\Software\Classes\GNOMEWebHTML", "", "GNOME Web HTML Document"),
+        (r"HKCU\Software\Classes\GNOMEWebHTML\DefaultIcon", "", &icon_val),
+        (r"HKCU\Software\Classes\GNOMEWebHTML\shell\open\command", "", &cmd_val),
+        (r"HKCU\Software\Classes\Applications\epiphany.exe\shell\open\command", "", &cmd_val),
+        (r"HKCU\Software\RegisteredApplications", "GNOME Web", r"Software\GNOME Web\Capabilities"),
+        (r"HKCU\Software\GNOME Web\Capabilities", "ApplicationName", "GNOME Web"),
+        (r"HKCU\Software\GNOME Web\Capabilities", "ApplicationDescription", "GNOME Web (Epiphany) Browser"),
+        (r"HKCU\Software\GNOME Web\Capabilities\URLAssociations", "http", "GNOMEWebHTML"),
+        (r"HKCU\Software\GNOME Web\Capabilities\URLAssociations", "https", "GNOMEWebHTML"),
+        (r"HKCU\Software\GNOME Web\Capabilities\FileAssociations", ".htm", "GNOMEWebHTML"),
+        (r"HKCU\Software\GNOME Web\Capabilities\FileAssociations", ".html", "GNOMEWebHTML"),
+    ];
+    for (key, name, val) in reg_cmds {
+        let mut args = vec!["add", key];
+        if name.is_empty() {
+            args.push("/ve");
+        } else {
+            args.push("/v");
+            args.push(name);
+        }
+        args.extend_from_slice(&["/t", "REG_SZ", "/d", val, "/f"]);
+        let _ = std::process::Command::new("reg.exe").args(&args).status();
+    }
+    let _ = std::process::Command::new("cmd.exe")
+        .args(["/c", "start", "", "ms-settings:defaultapps?registeredAppUser=GNOME%20Web"])
+        .spawn();
+    1
+}

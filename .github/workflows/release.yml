@@ -12,19 +12,16 @@ jobs:
   linux-verify:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:questing
+      image: archlinux:latest
     steps:
       - uses: actions/checkout@v4
       - name: Install Linux Epiphany Build Dependencies
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            meson ninja-build gcc pkg-config gettext itstool blueprint-compiler \
-            libgtk-4-dev libadwaita-1-dev libwebkitgtk-6.0-dev \
-            libgcr-4-dev libgck-2-dev libportal-gtk4-dev libsecret-1-dev \
-            libsoup-3.0-dev libxml2-dev libarchive-dev libsqlite3-dev \
-            libjson-glib-dev nettle-dev libpwquality-dev libgstreamer1.0-dev \
-            iso-codes gsettings-desktop-schemas-dev appstream desktop-file-utils
+          pacman -Syu --noconfirm --needed \
+            meson ninja gcc pkgconf gettext itstool blueprint-compiler \
+            gtk4 libadwaita webkitgtk-6.0 gcr-4 libportal-gtk4 libsecret \
+            libsoup3 libxml2 libarchive sqlite json-glib nettle libpwquality \
+            gstreamer iso-codes gsettings-desktop-schemas appstream desktop-file-utils
       - name: Build & Test Install on Linux
         run: |
           meson setup build-linux -Dunit_tests=disabled -Dman-pages=disabled --prefix=/usr

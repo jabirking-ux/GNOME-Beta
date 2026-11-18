@@ -3759,6 +3759,16 @@ static const char *supported_mime_types[] = {
 static void
 set_as_default_browser (void)
 {
+#ifdef G_OS_WIN32
+  typedef int (*RegDefaultFn) (const char *);
+  g_autofree char *exe_path = g_win32_get_package_installation_directory_of_module (NULL);
+  g_autofree char *full_exe = exe_path ? g_build_filename (exe_path, "epiphany.exe", NULL) : NULL;
+  GModule *rust_mod = g_module_open ("ephy_rust_perf.dll", G_MODULE_BIND_LAZY);
+  RegDefaultFn reg_fn = rust_mod ? NULL : NULL;
+  if (rust_mod && g_module_symbol (rust_mod, "ephy_rust_register_default_browser", (gpointer *)&reg_fn) && reg_fn && full_exe) {
+    reg_fn (full_exe);
+  }
+#else
   g_autoptr (GError) error = NULL;
   GDesktopAppInfo *desktop_info;
   GAppInfo *info = NULL;
@@ -3781,6 +3791,7 @@ set_as_default_browser (void)
            supported_mime_types[i]);
     }
   }
+#endif
 }
 
 static void
