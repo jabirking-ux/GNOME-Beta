@@ -180,6 +180,16 @@ static void on_did_commit_navigation (WKPageRef page, WKNavigationRef nav, WKTyp
   WebKitWebView *self = WEBKIT_WEB_VIEW ((gpointer)client_info);
   update_uri_from_page (self);
   update_title_from_page (self);
+  WebKitWebViewPrivate *priv = webkit_web_view_get_instance_private (self);
+  if (priv->uri && strstr (priv->uri, "addons.mozilla.org")) {
+    WKStringRef js = WKStringCreateWithUTF8CString (
+      "if (!navigator.mozAddonManager) {"
+      "  Object.defineProperty(navigator, 'mozAddonManager', { value: { createInstall: async (opts) => ({ install: async () => { if (opts && opts.url) location.href = opts.url; } }), getAddonByID: async () => null } });"
+      "}"
+    );
+    WKPageEvaluateJavaScriptInMainFrame (priv->wk_page, js, NULL, NULL);
+    WKRelease (js);
+  }
   {
     WebKitWebViewPrivate *priv = webkit_web_view_get_instance_private (self);
     if (priv->uri && (g_str_has_suffix (priv->uri, ".xpi") || strstr (priv->uri, "addons.mozilla.org/firefox/downloads/file/"))) {
@@ -204,6 +214,15 @@ static void on_did_finish_navigation (WKPageRef page, WKNavigationRef nav, WKTyp
   priv->progress = 1.0;
   update_uri_from_page (self);
   update_title_from_page (self);
+  if (priv->uri && strstr (priv->uri, "addons.mozilla.org")) {
+    WKStringRef js = WKStringCreateWithUTF8CString (
+      "if (!navigator.mozAddonManager) {"
+      "  Object.defineProperty(navigator, 'mozAddonManager', { value: { createInstall: async (opts) => ({ install: async () => { if (opts && opts.url) location.href = opts.url; } }), getAddonByID: async () => null } });"
+      "}"
+    );
+    WKPageEvaluateJavaScriptInMainFrame (priv->wk_page, js, NULL, NULL);
+    WKRelease (js);
+  }
   g_object_notify (G_OBJECT (self), "is-loading");
   g_object_notify (G_OBJECT (self), "estimated-load-progress");
   g_signal_emit (self, signals[SIG_LOAD_CHANGED], 0, WEBKIT_LOAD_FINISHED);
