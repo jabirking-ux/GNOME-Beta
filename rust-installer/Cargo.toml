@@ -10,3 +10,6 @@ zip = { version = "2.2", default-features = false, features = ["deflate"] }
 opt-level = 3
 lto = true
 strip = true
+
+[build-dependencies]
+winres = "0.1"
