@@ -251,6 +251,10 @@ static void ensure_wk_view (WebKitWebView *self) {
     WKRelease (eph);
   }
 
+  LONG_PTR style = GetWindowLongPtr (top_hwnd, GWL_STYLE);
+  if ((style & (WS_CLIPCHILDREN | WS_CLIPSIBLINGS)) != (WS_CLIPCHILDREN | WS_CLIPSIBLINGS))
+    SetWindowLongPtr (top_hwnd, GWL_STYLE, style | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+
   RECT r = {0, 0, 800, 600};
   priv->wk_view = WKViewCreate (r, pcfg, top_hwnd);
   WKRelease (pcfg);
