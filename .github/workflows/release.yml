@@ -1,0 +1,137 @@
+name: release
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  linux-verify:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:questing
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux Epiphany Build Dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            meson ninja-build gcc pkg-config gettext itstool blueprint-compiler \
+            libgtk-4-dev libadwaita-1-dev libwebkitgtk-6.0-dev \
+            libgcr-4-dev libgck-2-dev libportal-gtk4-dev libsecret-1-dev \
+            libsoup-3.0-dev libxml2-dev libarchive-dev libsqlite3-dev \
+            libjson-glib-dev nettle-dev libpwquality-dev libgstreamer1.0-dev \
+            iso-codes gsettings-desktop-schemas-dev appstream desktop-file-utils
+      - name: Build & Test Install on Linux
+        run: |
+          meson setup build-linux -Dunit_tests=disabled -Dman-pages=disabled --prefix=/usr
+          ninja -C build-linux
+          DESTDIR=/tmp/epiphany-linux-install ninja -C build-linux install
+          ls -la /tmp/epiphany-linux-install/usr/bin/epiphany
+    continue-on-error: true
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-meson
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-tools
+            mingw-w64-ucrt-x86_64-blueprint-compiler
+            mingw-w64-ucrt-x86_64-itstool
+            mingw-w64-ucrt-x86_64-gtk4
+            mingw-w64-ucrt-x86_64-libadwaita
+            mingw-w64-ucrt-x86_64-json-glib
+            mingw-w64-ucrt-x86_64-libsecret
+            mingw-w64-ucrt-x86_64-libsoup3
+            mingw-w64-ucrt-x86_64-libarchive
+            mingw-w64-ucrt-x86_64-libxml2
+            mingw-w64-ucrt-x86_64-nettle
+            mingw-w64-ucrt-x86_64-sqlite3
+            mingw-w64-ucrt-x86_64-gstreamer
+            mingw-w64-ucrt-x86_64-iso-codes
+            mingw-w64-ucrt-x86_64-gsettings-desktop-schemas
+            mingw-w64-ucrt-x86_64-adwaita-icon-theme
+            mingw-w64-ucrt-x86_64-nsis
+
+      - name: Fix blueprint-compiler shebang in MSYS2
+        shell: msys2 {0}
+        run: sed -i '1s|.*|#!/usr/bin/env python3|' /ucrt64/bin/blueprint-compiler
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch WebKit WinCairo
+        run: pwsh scripts/fetch-webkit.ps1
+
+      - name: Generate WebKit Import Library
+        shell: msys2 {0}
+        run: |
+          mkdir -p third_party/webkit-lib
+          WK_UCRT=$(cygpath -u "$WEBKIT_DIR")
+          cd third_party/webkit-lib
+          gendef "$WK_UCRT/WebKit2.dll"
+          dlltool -D WebKit2.dll -d WebKit2.def -l libWebKit2.dll.a
+
+      - name: Build Windows WebKitGTK Compatibility Shims
+        shell: msys2 {0}
+        run: bash scripts/build-win-shims.sh
+
+      - name: Configure & Build Epiphany (GNOME Web)
+        shell: msys2 {0}
+        run: |
+          export PKG_CONFIG_PATH="$PWD/win-shims/lib/pkgconfig:$PKG_CONFIG_PATH"
+          meson setup build -Dunit_tests=disabled -Dman-pages=disabled
+          ninja -C build
+
+      - name: Stage Windows Application & Dependencies
+        shell: msys2 {0}
+        run: bash scripts/stage-windows.sh "$(cygpath -u "$WEBKIT_DIR")"
+
+      - name: Build NSIS Installer
+        shell: msys2 {0}
+        run: |
+          V="${GITHUB_REF_NAME:-v51.2.0}"
+          V="${V#v}"
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          cd installer
+          makensis -DVERSION="$V" gnome-beta.nsi
+
+      - name: Build Portable ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/app/* -DestinationPath "dist/GNOME-Beta-portable-${{ env.VERSION }}.zip" -Force
+
+      - name: Upload Release Artifacts
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: "GNOME Web (GNOME-Beta) v${{ env.VERSION }}"
+          draft: false
+          prerelease: false
+          files: |
+            dist/*.exe
+            dist/*.zip
+          body: |
+            ### GNOME Web (Epiphany 51.2) — Upstream Native Port (`GNOME-Beta`)
+
+            Built directly from the upstream GNOME Web (`GNOME/epiphany`) codebase with native Windows & Linux support:
+            - **Engine:** Apple WebKit (WinCairo 64-bit multi-process) on Windows / WebKitGTK 6.0 on Linux
+            - **UI Framework:** GTK4 + Libadwaita (100% upstream `.blp` Blueprint templates & resources)
+            - **Windows Installation:**
+              - Download `GNOME-Beta-Setup-${{ env.VERSION }}.exe` for a single-click Windows installer (no admin required, creates Desktop & Start Menu shortcuts).
+              - Or download `GNOME-Beta-portable-${{ env.VERSION }}.zip` to run portably without installation.
+            - **Linux Installation:**
+              - `meson setup build && ninja -C build && sudo meson install -C build`

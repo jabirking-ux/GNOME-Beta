@@ -1,0 +1,10 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: gck-2
+Description: GCK PKCS#11 Windows compatibility shim
+Version: 4.2.0
+Requires: glib-2.0 gio-2.0
+Libs: -L${libdir} -lwinshims
+Cflags: -I${includedir}

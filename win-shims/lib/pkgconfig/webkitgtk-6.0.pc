@@ -1,0 +1,10 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: webkitgtk-6.0
+Description: WebKitGTK 6.0 compatibility layer over Apple WebKit WinCairo
+Version: 2.54.0
+Requires: gtk4 gio-2.0 libsoup-3.0
+Libs: -L${libdir} -lwinwebkitgtk -L${prefix}/../third_party/webkit-lib -lWebKit2 -luser32 -lgdi32 -lshell32 -lole32
+Cflags: -I${includedir} -I${includedir}/webkitgtk-6.0 -I${prefix}/../third_party/webkit-headers

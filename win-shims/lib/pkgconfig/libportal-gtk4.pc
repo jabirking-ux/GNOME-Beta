@@ -1,0 +1,10 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libportal-gtk4
+Description: libportal-gtk4 Windows compatibility shim
+Version: 0.8.0
+Requires: gtk4 gio-2.0
+Libs: -L${libdir} -lwinshims -lshell32 -lcrypt32
+Cflags: -I${includedir}

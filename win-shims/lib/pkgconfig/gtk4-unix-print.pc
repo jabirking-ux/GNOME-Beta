@@ -1,0 +1,10 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: gtk4-unix-print
+Description: GTK4 Print compatibility shim for Windows
+Version: 4.21.0
+Requires: gtk4
+Libs:
+Cflags:

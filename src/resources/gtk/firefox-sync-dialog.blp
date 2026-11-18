@@ -1,0 +1,109 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $EphyFirefoxSyncDialog: Adw.Dialog {
+  content-height: 640;
+  content-width: 640;
+  title: _("Firefox Sync");
+
+  child: Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar {
+      Button sync_now_button {
+        child: Adw.ButtonContent {
+          icon-name: "arrows-circle-rotated-symbolic";
+          label: _("Sync _Now");
+          use-underline: true;
+        };
+
+        clicked => $on_sync_sync_now_button_clicked();
+      }
+    }
+
+    content: Adw.PreferencesPage {
+      Adw.PreferencesGroup sync_page_group {
+        description: _(
+          "Sign in with your Mozilla account to sync your data with GNOME Web and Firefox on other computers. GNOME Web is not Firefox and is not produced or endorsed by Mozilla."
+        );
+
+        Box sync_firefox_iframe_box {
+          orientation: vertical;
+          spacing: 6;
+
+          Label sync_firefox_iframe_label {
+            visible: false;
+            xalign: 0;
+          }
+        }
+      }
+
+      Adw.PreferencesGroup sync_firefox_account_group {
+        title: _("Mozilla Account");
+
+        Adw.ActionRow sync_firefox_account_row {
+          subtitle: _("Logged in");
+          use-markup: false;
+          use-underline: true;
+
+          Button sync_sign_out_button {
+            label: _("Sign _Out");
+            use-underline: true;
+            valign: center;
+            clicked => $on_sync_sign_out_button_clicked();
+          }
+        }
+      }
+
+      Adw.PreferencesGroup sync_options_group {
+        title: _("Sync Options");
+
+        Adw.SwitchRow sync_bookmarks_row {
+          title: _("Sync _Bookmarks");
+          use-underline: true;
+          visible: false;
+        }
+
+        Adw.SwitchRow sync_passwords_row {
+          title: _("Sync _Passwords");
+          use-underline: true;
+        }
+
+        Adw.SwitchRow sync_history_row {
+          title: _("Sync _History");
+          use-underline: true;
+        }
+
+        Adw.SwitchRow sync_open_tabs_row {
+          title: _("Sync Open _Tabs");
+          use-underline: true;
+        }
+
+        Adw.ActionRow {
+          title: _("Synced Tabs");
+          sensitive: bind sync_open_tabs_row.active;
+          activatable: true;
+          activated => $on_sync_synced_tabs_row_clicked();
+
+          [suffix]
+          Image sync_open_tabs_row_arrow {
+            icon-name: "go-next-symbolic";
+            valign: center;
+          }
+        }
+      }
+
+      Adw.PreferencesGroup {
+        Adw.ComboRow sync_frequency_row {
+          title: _("Frequency");
+          expression: expr $get_sync_frequency_minutes_name() as <string>;
+        }
+        
+        Adw.EntryRow sync_device_name_entry {
+          title: _("Device Name");
+          show-apply-button: true;
+          apply => $on_sync_name_applied(template);
+        }
+      }
+    };
+  };
+}

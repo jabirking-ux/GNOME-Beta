@@ -1,0 +1,16 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $EphySearchEngineRow: Adw.ActionRow {
+  [suffix]
+  Button edit_button {
+    valign: center;
+    icon-name: "document-edit-symbolic";
+    tooltip-text: _("Edit");
+    clicked => $on_edit_button_clicked();
+
+    styles [
+      "flat",
+    ]
+  }
+}

@@ -1,0 +1,77 @@
+using Gtk 4.0;
+using Adw 1;
+
+menu notebook-menu {
+  section {
+    item {
+      label: _("R_eload");
+      action: "toolbar.reload";
+      accel: "<Primary>R";
+    }
+
+    item {
+      label: _("Reload _All Tabs");
+      action: "tab.reload-all";
+    }
+
+    item {
+      label: _("_Duplicate");
+      action: "tab.duplicate";
+      accel: "<shift><Primary>K";
+    }
+  }
+
+  section {
+    item {
+      label: _("P_in Tab");
+      action: "tab.pin";
+      hidden-when: "action-disabled";
+    }
+
+    item {
+      label: _("Unp_in Tab");
+      action: "tab.unpin";
+      hidden-when: "action-disabled";
+    }
+
+    item {
+      label: _("_Mute Tab");
+      action: "tab.mute";
+      accel: "<Primary>M";
+    }
+  }
+
+  section {
+    item {
+      label: _("Close Tabs to the _Left");
+      action: "tab.close-left";
+    }
+
+    item {
+      label: _("Close Tabs to the _Right");
+      action: "tab.close-right";
+    }
+
+    item {
+      label: _("Close _Other Tabs");
+      action: "tab.close-others";
+    }
+
+    item {
+      label: _("_Close");
+      action: "tab.close";
+    }
+  }
+}
+
+template $EphyTabView: Adw.Bin {
+  vexpand: true;
+
+  child: Adw.TabView tab_view {
+    menu-model: notebook-menu;
+    notify::n-pages => $notify_n_pages_cb() swapped;
+    notify::selected-page => $notify_selected_page_cb() swapped;
+    setup-menu => $setup_menu_cb() swapped;
+    indicator-activated => $indicator_activated_cb() swapped;
+  };
+}

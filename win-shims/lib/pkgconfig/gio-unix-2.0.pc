@@ -1,0 +1,10 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: gio-unix-2.0
+Description: GIO Unix stream compatibility shim for Windows
+Version: 2.84.0
+Requires: gio-2.0
+Libs: -L${libdir} -lwinshims
+Cflags: -I${includedir}

@@ -1,0 +1,69 @@
+{
+    "app-id" : "org.gnome.Epiphany.Devel",
+    "runtime" : "org.gnome.Platform",
+    "runtime-version" : "master",
+    "sdk" : "org.gnome.Sdk",
+    "command" : "epiphany",
+    "tags" : [
+        "nightly"
+    ],
+    "desktop-file-name-suffix" : " (Epiphany Technology Preview)",
+    "finish-args" : [
+        "--device=dri",
+        "--device=input",
+        "--filesystem=xdg-download",
+        "--share=ipc",
+        "--share=network",
+        "--socket=fallback-x11",
+        "--socket=pulseaudio",
+        "--socket=wayland",
+        "--own-name=org.gnome.Epiphany.WebAppProvider",
+        "--require-version=1.16.0"
+    ],
+    "modules" : [
+        {
+            "name" : "libpwquality",
+            "buildsystem" : "autotools",
+            "config-opts" : [
+                "--disable-python-bindings",
+                "--with-securedir=/app/lib/security"
+            ],
+            "sources" : [
+                {
+                    "type" : "git",
+                    "url" : "https://github.com/libpwquality/libpwquality.git",
+                    "tag" : "master"
+                }
+            ]
+        },
+        {
+            "name" : "epiphany",
+            "buildsystem" : "meson",
+            "builddir" : true,
+            "config-opts" : [
+                "-Dtech_preview=true",
+                "-Dprofile=Devel"
+            ],
+            "build-options" : {
+                "test-args" : [
+                    "--device=dri",
+                    "--filesystem=xdg-download",
+                    "--share=ipc",
+                    "--share=network",
+                    "--socket=fallback-x11",
+                    "--socket=pulseaudio",
+                    "--socket=wayland",
+                    "--own-name=org.gnome.Epiphany.WebAppProvider"
+                ]
+            },
+            "sources" : [
+                {
+                    "type" : "git",
+                    "url" : "https://gitlab.gnome.org/GNOME/epiphany.git",
+                    "branch" : "main",
+                    "disable-shallow-clone" : true
+                }
+            ]
+        }
+    ]
+}
