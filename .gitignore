@@ -4,3 +4,6 @@
 /win-shims/build/
 /win-shims/lib/*.a
 /third_party/webkit-lib/
+
+target/
+

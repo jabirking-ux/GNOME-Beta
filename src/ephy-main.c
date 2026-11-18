@@ -205,10 +205,16 @@ main (int   argc,
     if (exe_dir) {
       g_autofree char *share_dir = g_build_filename (exe_dir, "share", NULL);
       g_autofree char *schema_dir = g_build_filename (share_dir, "glib-2.0", "schemas", NULL);
+      g_autofree char *gio_mods = g_build_filename (exe_dir, "lib", "gio", "modules", NULL);
+      g_autofree char *ca_file = g_build_filename (exe_dir, "cacert.pem", NULL);
       if (g_file_test (schema_dir, G_FILE_TEST_IS_DIR)) {
         g_setenv ("GSETTINGS_SCHEMA_DIR", schema_dir, FALSE);
         g_setenv ("XDG_DATA_DIRS", share_dir, FALSE);
       }
+      if (g_file_test (gio_mods, G_FILE_TEST_IS_DIR))
+        g_setenv ("GIO_MODULE_DIR", gio_mods, FALSE);
+      if (g_file_test (ca_file, G_FILE_TEST_EXISTS))
+        g_setenv ("SSL_CERT_FILE", ca_file, FALSE);
     }
   }
 #endif

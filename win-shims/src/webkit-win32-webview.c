@@ -126,7 +126,7 @@ static void sync_wk_geometry (WebKitWebView *self) {
 
   if (x != priv->last_x || y != priv->last_y || w != priv->last_w || h != priv->last_h || !IsWindowVisible (hwnd)) {
     priv->last_x = x; priv->last_y = y; priv->last_w = w; priv->last_h = h;
-    SetWindowPos (hwnd, HWND_TOP, x, y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    SetWindowPos (hwnd, NULL, x, y, w, h, SWP_NOACTIVATE | SWP_NOZORDER | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS);
   }
 }
 
@@ -160,10 +160,26 @@ static void on_did_start_provisional_navigation (WKPageRef page, WKNavigationRef
   g_signal_emit (self, signals[SIG_LOAD_CHANGED], 0, WEBKIT_LOAD_STARTED);
 }
 
+static void update_title_from_page (WebKitWebView *self) {
+  WebKitWebViewPrivate *priv = webkit_web_view_get_instance_private (self);
+  if (!priv->wk_page) return;
+  WKStringRef t = WKPageCopyTitle (priv->wk_page);
+  if (t) {
+    g_autofree char *utf8 = wk_string_to_utf8 (t);
+    WKRelease (t);
+    if (utf8 && utf8[0] && g_strcmp0 (priv->title, utf8) != 0) {
+      g_free (priv->title);
+      priv->title = g_strdup (utf8);
+      g_object_notify (G_OBJECT (self), "title");
+    }
+  }
+}
+
 static void on_did_commit_navigation (WKPageRef page, WKNavigationRef nav, WKTypeRef user_data, const void *client_info) {
   (void)page; (void)nav; (void)user_data;
   WebKitWebView *self = WEBKIT_WEB_VIEW ((gpointer)client_info);
   update_uri_from_page (self);
+  update_title_from_page (self);
   g_signal_emit (self, signals[SIG_LOAD_CHANGED], 0, WEBKIT_LOAD_COMMITTED);
 }
 
@@ -174,6 +190,7 @@ static void on_did_finish_navigation (WKPageRef page, WKNavigationRef nav, WKTyp
   priv->is_loading = FALSE;
   priv->progress = 1.0;
   update_uri_from_page (self);
+  update_title_from_page (self);
   g_object_notify (G_OBJECT (self), "is-loading");
   g_object_notify (G_OBJECT (self), "estimated-load-progress");
   g_signal_emit (self, signals[SIG_LOAD_CHANGED], 0, WEBKIT_LOAD_FINISHED);
@@ -259,10 +276,7 @@ static void ensure_wk_view (WebKitWebView *self) {
 static void webkit_web_view_map (GtkWidget *widget) {
   GTK_WIDGET_CLASS (webkit_web_view_parent_class)->map (widget);
   WebKitWebView *self = WEBKIT_WEB_VIEW (widget);
-  WebKitWebViewPrivate *priv = webkit_web_view_get_instance_private (self);
   ensure_wk_view (self);
-  if (!priv->tick_id)
-    priv->tick_id = gtk_widget_add_tick_callback (widget, on_tick_cb, NULL, NULL);
   sync_wk_geometry (self);
 }
 

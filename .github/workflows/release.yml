@@ -63,7 +63,6 @@ jobs:
             mingw-w64-ucrt-x86_64-iso-codes
             mingw-w64-ucrt-x86_64-gsettings-desktop-schemas
             mingw-w64-ucrt-x86_64-adwaita-icon-theme
-            mingw-w64-ucrt-x86_64-nsis
 
       - name: Fix blueprint-compiler shebang in MSYS2
         shell: msys2 {0}
@@ -96,18 +95,27 @@ jobs:
           meson setup build -Dunit_tests=disabled -Dman-pages=disabled
           ninja -C build
 
+      - name: Build Rust Performance Library
+        shell: pwsh
+        run: |
+          cd rust-perf
+          cargo build --release
+
       - name: Stage Windows Application & Dependencies
         shell: msys2 {0}
-        run: bash scripts/stage-windows.sh "$(cygpath -u "$WEBKIT_DIR")"
-
-      - name: Build NSIS Installer
-        shell: msys2 {0}
         run: |
-          V="${GITHUB_REF_NAME:-v51.2.0}"
-          V="${V#v}"
-          echo "VERSION=$V" >> "$GITHUB_ENV"
-          cd installer
-          makensis -DVERSION="$V" gnome-beta.nsi
+          bash scripts/stage-windows.sh "$(cygpath -u "$WEBKIT_DIR")"
+          cp rust-perf/target/release/ephy_rust_perf.dll dist/app/
+
+      - name: Build Handmade Rust Installer (No NSIS)
+        shell: pwsh
+        run: |
+          $V = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME.TrimStart('v') } else { "51.2.2" }
+          "VERSION=$V" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          Compress-Archive -Path dist/app/* -DestinationPath dist/payload.zip -Force
+          cd rust-installer
+          cargo build --release
+          Copy-Item target/release/gnome-beta-setup.exe "../dist/GNOME-Beta-Setup-$V.exe" -Force
 
       - name: Build Portable ZIP
         shell: pwsh

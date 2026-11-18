@@ -55,7 +55,18 @@ cp "$BUILD/data/org.gnome.Epiphany.enums.xml" "$DIST/share/glib-2.0/schemas/" 2>
 cp /ucrt64/share/glib-2.0/schemas/*.xml "$DIST/share/glib-2.0/schemas/" 2>/dev/null || true
 glib-compile-schemas "$DIST/share/glib-2.0/schemas"
 
-# 5. Icons & Epiphany data
+# 5. Icons, GTK4 Windows Font Config, SSL CA bundle & Epiphany data
+mkdir -p "$DIST/etc/gtk-4.0" "$DIST/share/gtk-4.0"
+cat > "$DIST/etc/gtk-4.0/settings.ini" << 'EOF'
+[Settings]
+gtk-font-name=Segoe UI 9
+gtk-xft-antialias=1
+gtk-xft-hinting=1
+gtk-xft-hintstyle=hintslight
+gtk-xft-rgba=rgb
+EOF
+cp "$DIST/etc/gtk-4.0/settings.ini" "$DIST/share/gtk-4.0/settings.ini"
+[ -f /ucrt64/etc/ssl/certs/ca-bundle.crt ] && cp /ucrt64/etc/ssl/certs/ca-bundle.crt "$DIST/cacert.pem" || true
 cp -r /ucrt64/share/icons/Adwaita "$DIST/share/icons/" 2>/dev/null || true
 cp -r /ucrt64/share/icons/hicolor "$DIST/share/icons/" 2>/dev/null || true
 mkdir -p "$DIST/share/icons/hicolor/scalable/apps" "$DIST/share/icons/hicolor/symbolic/apps"
