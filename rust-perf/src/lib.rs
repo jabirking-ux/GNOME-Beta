@@ -296,3 +296,44 @@ pub extern "C" fn ephy_rust_download_and_install_xpi(xpi_url: *const c_char, ext
     let _ = std::fs::remove_file(&tmp_xpi);
     if ok && dest.join("manifest.json").is_file() { 1 } else { 0 }
 }
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_clear_site_data(data_dir: *const c_char) -> i32 {
+    if data_dir.is_null() {
+        return 0;
+    }
+    let dir = unsafe { CStr::from_ptr(data_dir) }.to_string_lossy();
+    let path = std::path::Path::new(dir.as_ref());
+    if !path.is_dir() {
+        return 0;
+    }
+    let mut cleared = 0;
+    for sub in ["Cache", "LocalStorage", "IndexedDB", "MediaCache", "OfflineStorage"] {
+        let p = path.join(sub);
+        if p.is_dir() && std::fs::remove_dir_all(&p).is_ok() {
+            let _ = std::fs::create_dir_all(&p);
+            cleared += 1;
+        }
+    }
+    if cleared > 0 { 1 } else { 0 }
+}
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_build_search_url(query: *const c_char, template: *const c_char) -> *mut c_char {
+    if query.is_null() || template.is_null() {
+        return std::ptr::null_mut();
+    }
+    let q = unsafe { CStr::from_ptr(query) }.to_string_lossy();
+    let tmpl = unsafe { CStr::from_ptr(template) }.to_string_lossy();
+    let encoded: String = q.bytes().map(|b| {
+        if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~' {
+            (b as char).to_string()
+        } else if b == b' ' {
+            "+".to_string()
+        } else {
+            format!("%{:02X}", b)
+        }
+    }).collect();
+    let url = tmpl.replace("%s", &encoded);
+    CString::new(url).map(|cs| cs.into_raw()).unwrap_or(std::ptr::null_mut())
+}
