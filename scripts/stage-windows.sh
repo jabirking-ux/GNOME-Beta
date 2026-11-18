@@ -59,7 +59,8 @@ glib-compile-schemas "$DIST/share/glib-2.0/schemas"
 mkdir -p "$DIST/etc/gtk-4.0" "$DIST/share/gtk-4.0"
 cat > "$DIST/etc/gtk-4.0/settings.ini" << 'EOF'
 [Settings]
-gtk-font-name=Segoe UI 9
+gtk-font-name=Segoe UI 10
+gtk-hint-font-metrics=1
 gtk-xft-antialias=1
 gtk-xft-hinting=1
 gtk-xft-hintstyle=hintslight
