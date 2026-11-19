@@ -4,7 +4,15 @@ export PATH="/ucrt64/bin:$PATH"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/dist/app"
 BUILD="$ROOT/build"
-WEBKIT_SRC="${1:-}"
+WEBKIT_SRC="${1:-${WEBKIT_DIR:-}}"
+if [ -z "$WEBKIT_SRC" ] || [ ! -d "$WEBKIT_SRC" ]; then
+  for candidate in "$ROOT"/build/webkit/pw/webkit-*; do
+    if [ -d "$candidate" ] && [ -f "$candidate/WebKit2.dll" ]; then
+      WEBKIT_SRC="$candidate"
+      break
+    fi
+  done
+fi
 
 rm -rf "$DIST"
 mkdir -p "$DIST/share/glib-2.0/schemas" "$DIST/share/icons" "$DIST/share/epiphany"
@@ -30,23 +38,36 @@ if [ -n "$WEBKIT_SRC" ] && [ -d "$WEBKIT_SRC" ]; then
   [ -d "$WEBKIT_SRC/cacert.pem" ] || cp "$WEBKIT_SRC/cacert.pem" "$DIST/" 2>/dev/null || true
 fi
 
-# 3. Collect all UCRT64 DLL dependencies via ldd
-echo "Collecting UCRT64 runtime DLLs..."
-for bin in "$DIST/epiphany.exe" "$DIST/gnome-web-installer.exe" "$DIST/libephymain.dll" "$DIST/libephymisc.dll" "$DIST/libephyautofill.dll" "$DIST/libephysync.dll"; do
-  ldd "$bin" | awk '/\/ucrt64\/bin\// {print $3}' | sort -u | while read -r dll; do
-    [ -f "$dll" ] && cp -n "$dll" "$DIST/"
-  done
-done
+if [ ! -f "$DIST/WebKit2.dll" ]; then
+  echo "ERROR: WebKit2.dll not found. Pass WebKit WinCairo dir to stage-windows.sh or run scripts/fetch-webkit.ps1 first." >&2
+  exit 1
+fi
 
-# GDK-Pixbuf loaders & GIO modules
+# GDK-Pixbuf loaders, GIO modules & Rust perf DLL (stage before dependency scan)
 mkdir -p "$DIST/lib/gdk-pixbuf-2.0/2.10.0/loaders" "$DIST/lib/gio/modules"
 cp -r /ucrt64/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.dll "$DIST/lib/gdk-pixbuf-2.0/2.10.0/loaders/" 2>/dev/null || true
 cp /ucrt64/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache "$DIST/lib/gdk-pixbuf-2.0/2.10.0/" 2>/dev/null || true
 cp /ucrt64/lib/gio/modules/*.dll "$DIST/lib/gio/modules/" 2>/dev/null || true
-for mod in "$DIST"/lib/gio/modules/*.dll "$DIST"/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.dll; do
-  [ -f "$mod" ] && ldd "$mod" | awk '/\/ucrt64\/bin\// {print $3}' | sort -u | while read -r dll; do
-    [ -f "$dll" ] && cp -n "$dll" "$DIST/"
+[ -f "$ROOT/rust-perf/target/release/ephy_rust_perf.dll" ] && cp "$ROOT/rust-perf/target/release/ephy_rust_perf.dll" "$DIST/" || true
+
+# 3. Collect all UCRT64 DLL dependencies recursively via static PE import tables (objdump -p)
+echo "Collecting UCRT64 runtime DLLs..."
+declare -A scanned
+while :; do
+  copied=0
+  for bin in "$DIST"/*.exe "$DIST"/*.dll "$DIST"/lib/gio/modules/*.dll "$DIST"/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.dll; do
+    [ -f "$bin" ] || continue
+    [ -n "${scanned[$bin]:-}" ] && continue
+    scanned["$bin"]=1
+    while read -r dll; do
+      [ -n "$dll" ] || continue
+      if [ ! -f "$DIST/$dll" ] && [ -f "/ucrt64/bin/$dll" ]; then
+        cp -n "/ucrt64/bin/$dll" "$DIST/"
+        copied=1
+      fi
+    done < <(objdump -p "$bin" | awk '/DLL Name:/ {print $3}')
   done
+  [ "$copied" -eq 0 ] && break
 done
 
 # 4. GSettings schemas (Epiphany + GTK4 + gsettings-desktop-schemas)
