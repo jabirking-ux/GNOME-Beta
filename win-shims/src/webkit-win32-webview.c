@@ -479,6 +479,19 @@ static void webkit_web_view_class_init (WebKitWebViewClass *k) {
   signals[SIG_QUERY_PERMISSION_STATE] = g_signal_new ("query-permission-state", G_TYPE_FROM_CLASS (k), G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (WebKitWebViewClass, query_permission_state), NULL, NULL, NULL, G_TYPE_NONE, 1, WEBKIT_TYPE_PERMISSION_STATE_QUERY);
 }
 
+static void on_wk_focus_leave (GtkEventControllerFocus *ctrl, gpointer user_data) {
+  (void)ctrl;
+  WebKitWebView *self = WEBKIT_WEB_VIEW (user_data);
+  WebKitWebViewPrivate *priv = webkit_web_view_get_instance_private (self);
+  if (priv->wk_view) {
+    HWND hwnd = WKViewGetWindow (priv->wk_view);
+    if (hwnd && GetFocus () == hwnd) {
+      HWND parent = GetParent (hwnd);
+      if (parent) SetFocus (parent);
+    }
+  }
+}
+
 static void webkit_web_view_init (WebKitWebView *self) {
   WebKitWebViewPrivate *priv = webkit_web_view_get_instance_private (self);
   priv->zoom_level = 1.0;
@@ -486,6 +499,9 @@ static void webkit_web_view_init (WebKitWebView *self) {
   priv->last_x = priv->last_y = priv->last_w = priv->last_h = -1;
   gtk_widget_set_hexpand (GTK_WIDGET (self), TRUE);
   gtk_widget_set_vexpand (GTK_WIDGET (self), TRUE);
+  GtkEventController *focus = gtk_event_controller_focus_new ();
+  g_signal_connect (focus, "leave", G_CALLBACK (on_wk_focus_leave), self);
+  gtk_widget_add_controller (GTK_WIDGET (self), focus);
 }
 
 GtkWidget *webkit_web_view_new (void) { return g_object_new (WEBKIT_TYPE_WEB_VIEW, NULL); }
