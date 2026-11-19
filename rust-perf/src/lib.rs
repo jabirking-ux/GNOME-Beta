@@ -337,3 +337,56 @@ pub extern "C" fn ephy_rust_build_search_url(query: *const c_char, template: *co
     let url = tmpl.replace("%s", &encoded);
     CString::new(url).map(|cs| cs.into_raw()).unwrap_or(std::ptr::null_mut())
 }
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_check_update_available(current_version: *const c_char) -> *mut c_char {
+    let cur = if current_version.is_null() {
+        "51.2".to_string()
+    } else {
+        unsafe { CStr::from_ptr(current_version) }.to_string_lossy().into_owned()
+    };
+    let out = match std::process::Command::new("curl.exe")
+        .args(["-sL", "-H", "User-Agent: GNOME-Beta-Updater", "https://api.github.com/repos/jabirking-ux/GNOME-Beta/releases/latest"])
+        .output()
+    {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).into_owned(),
+        _ => return std::ptr::null_mut(),
+    };
+    let tag = out.split("\"tag_name\"").nth(1)
+        .and_then(|s| s.split('"').nth(1))
+        .unwrap_or("");
+    let tag_ver = tag.trim_start_matches('v');
+    if tag_ver.is_empty() || tag_ver == cur {
+        return std::ptr::null_mut();
+    }
+    let mut setup_url = String::new();
+    for part in out.split("\"browser_download_url\"") {
+        if let Some(url) = part.split('"').nth(1) {
+            if url.contains("Setup") && url.ends_with(".exe") {
+                setup_url = url.to_string();
+                break;
+            }
+        }
+    }
+    if setup_url.is_empty() {
+        return std::ptr::null_mut();
+    }
+    CString::new(format!("{}|{}", tag_ver, setup_url)).map(|cs| cs.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub extern "C" fn ephy_rust_download_and_run_setup(setup_url: *const c_char) {
+    if setup_url.is_null() {
+        return;
+    }
+    let url = unsafe { CStr::from_ptr(setup_url) }.to_string_lossy().into_owned();
+    std::thread::spawn(move || {
+        let dest = std::env::temp_dir().join("GNOME-Beta-Setup-latest.exe");
+        let dl = std::process::Command::new("curl.exe")
+            .args(["-sL", "-o", dest.to_string_lossy().as_ref(), &url])
+            .status();
+        if matches!(dl, Ok(s) if s.success()) {
+            let _ = std::process::Command::new(&dest).spawn();
+        }
+    });
+}

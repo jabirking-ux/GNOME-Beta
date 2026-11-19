@@ -4793,6 +4793,83 @@ on_visible_dialog_notify_win32 (GObject    *obj,
       gtk_widget_set_visible (GTK_WIDGET (view), TRUE);
   }
 }
+static void
+on_update_dialog_response_win32 (AdwAlertDialog *dialog,
+                                 const char     *response,
+                                 gpointer        user_data)
+{
+  char *url = user_data;
+  if (g_strcmp0 (response, "install") == 0 && url) {
+    typedef void (*RunSetupFn) (const char *);
+    GModule *mod = g_module_open ("ephy_rust_perf.dll", G_MODULE_BIND_LAZY);
+    RunSetupFn fn = NULL;
+    if (mod && g_module_symbol (mod, "ephy_rust_download_and_run_setup", (gpointer *)&fn) && fn)
+      fn (url);
+  }
+  g_free (url);
+}
+
+static void
+on_update_check_ready_win32 (GObject      *source,
+                             GAsyncResult *res,
+                             gpointer      user_data)
+{
+  EphyWindow *window = EPHY_WINDOW (source);
+  char *info = g_task_propagate_pointer (G_TASK (res), NULL);
+  char **parts;
+  AdwDialog *dialog;
+  g_autofree char *body = NULL;
+
+  if (!info)
+    return;
+
+  parts = g_strsplit (info, "|", 2);
+  g_free (info);
+  if (!parts || !parts[0] || !parts[1]) {
+    g_strfreev (parts);
+    return;
+  }
+
+  dialog = adw_alert_dialog_new (_("Update Available"), NULL);
+  body = g_strdup_printf (_("GNOME Web %s is available. Would you like to download and install it?"), parts[0]);
+  adw_alert_dialog_set_body (ADW_ALERT_DIALOG (dialog), body);
+  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (dialog),
+                                  "later", _("_Later"),
+                                  "install", _("_Install Update"),
+                                  NULL);
+  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (dialog), "install", ADW_RESPONSE_SUGGESTED);
+  adw_alert_dialog_set_default_response (ADW_ALERT_DIALOG (dialog), "install");
+  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (dialog), "later");
+  g_signal_connect (dialog, "response",
+                    G_CALLBACK (on_update_dialog_response_win32), g_strdup (parts[1]));
+  g_strfreev (parts);
+  adw_dialog_present (dialog, GTK_WIDGET (window));
+}
+
+static void
+update_check_thread_win32 (GTask        *task,
+                           gpointer      source_object,
+                           gpointer      task_data,
+                           GCancellable *cancellable)
+{
+  typedef char *(*CheckUpdFn) (const char *);
+  typedef void (*FreeStrFn) (char *);
+  GModule *mod = g_module_open ("ephy_rust_perf.dll", G_MODULE_BIND_LAZY);
+  CheckUpdFn check_fn = NULL;
+  FreeStrFn free_fn = NULL;
+  char *res = NULL;
+  if (mod &&
+      g_module_symbol (mod, "ephy_rust_check_update_available", (gpointer *)&check_fn) &&
+      g_module_symbol (mod, "ephy_rust_free_str", (gpointer *)&free_fn) &&
+      check_fn && free_fn) {
+    char *raw = check_fn (VERSION);
+    if (raw) {
+      res = g_strdup (raw);
+      free_fn (raw);
+    }
+  }
+  g_task_return_pointer (task, res, g_free);
+}
 #endif
 
 static void
@@ -4805,6 +4882,11 @@ ephy_window_init (EphyWindow *window)
 #ifdef G_OS_WIN32
   g_signal_connect (window, "notify::visible-dialog",
                     G_CALLBACK (on_visible_dialog_notify_win32), NULL);
+  {
+    GTask *upd_task = g_task_new (window, NULL, on_update_check_ready_win32, NULL);
+    g_task_run_in_thread (upd_task, update_check_thread_win32);
+    g_object_unref (upd_task);
+  }
 #endif
 
   gtk_widget_init_template (GTK_WIDGET (window));
