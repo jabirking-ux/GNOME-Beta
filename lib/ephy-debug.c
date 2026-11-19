@@ -217,8 +217,10 @@ ephy_profiler_free (EphyProfiler *profiler)
 void
 ephy_debug_set_fatal_criticals ()
 {
+#ifndef G_OS_WIN32
   if (!g_getenv ("G_DEBUG"))
     g_log_set_always_fatal (G_LOG_LEVEL_CRITICAL);
+#endif
 }
 
 /**
